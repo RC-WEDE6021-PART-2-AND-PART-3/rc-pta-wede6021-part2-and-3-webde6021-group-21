@@ -1,7 +1,29 @@
 <?php 
-
+session_start();
 include 'includes/DBConn.php';
 include 'includes/navbar.php';
+
+// ===== HANDLE WISHLIST ADD/REMOVE =====
+if (isset($_GET['wishlist_add']) && isset($_SESSION['user_id'])) {
+    $product_id = intval($_GET['wishlist_add']);
+    $user_id = $_SESSION['user_id'];
+    
+    // Check if already in wishlist
+    $check = $conn->query("SELECT * FROM tblwishlist WHERE user_id = $user_id AND clothes_id = $product_id");
+    if ($check->num_rows == 0) {
+        $conn->query("INSERT INTO tblwishlist (user_id, clothes_id) VALUES ($user_id, $product_id)");
+    }
+    header("Location: " . $_SERVER['HTTP_REFERER']);
+    exit();
+}
+
+if (isset($_GET['wishlist_remove']) && isset($_SESSION['user_id'])) {
+    $product_id = intval($_GET['wishlist_remove']);
+    $user_id = $_SESSION['user_id'];
+    $conn->query("DELETE FROM tblwishlist WHERE user_id = $user_id AND clothes_id = $product_id");
+    header("Location: " . $_SERVER['HTTP_REFERER']);
+    exit();
+}
 
 // Handle search
 $search = isset($_GET['search']) ? $_GET['search'] : '';
@@ -28,6 +50,15 @@ if (!empty($max_price)) {
 
 $query .= " ORDER BY clothes_id DESC";
 $result = $conn->query($query);
+
+// Get user's wishlist items (for displaying heart status)
+$user_wishlist = [];
+if (isset($_SESSION['user_id'])) {
+    $wish_result = $conn->query("SELECT clothes_id FROM tblwishlist WHERE user_id = {$_SESSION['user_id']}");
+    while($w = $wish_result->fetch_assoc()) {
+        $user_wishlist[] = $w['clothes_id'];
+    }
+}
 ?>
 
 <!DOCTYPE html>
@@ -51,7 +82,7 @@ $result = $conn->query($query);
         /* Main Container */
         .container {
             max-width: 1400px;
-            margin: 100px auto 40px auto;
+            margin: 20px auto 40px auto;
             padding: 0 20px;
         }
 
@@ -210,6 +241,14 @@ $result = $conn->query($query);
             box-shadow: 0 15px 40px rgba(0,0,0,0.15);
         }
 
+        .card a {
+            text-decoration: none;
+        }
+
+        .card a:hover {
+            text-decoration: none;
+        }
+
         .image-container {
             width: 100%;
             height: 250px;
@@ -242,6 +281,7 @@ $result = $conn->query($query);
             color: #0b1a33;
             margin-bottom: 10px;
             line-height: 1.4;
+            text-decoration: none;
         }
 
         .card-description {
@@ -253,6 +293,7 @@ $result = $conn->query($query);
             -webkit-line-clamp: 2;
             -webkit-box-orient: vertical;
             overflow: hidden;
+            text-decoration: none;
         }
 
         .price {
@@ -260,6 +301,14 @@ $result = $conn->query($query);
             font-weight: 800;
             color: #0b1a33;
             margin-bottom: 15px;
+            text-decoration: none;
+        }
+
+        /* ===== CARD BUTTONS ===== */
+        .card-actions {
+            display: flex;
+            gap: 10px;
+            align-items: center;
         }
 
         .view-btn {
@@ -273,10 +322,45 @@ $result = $conn->query($query);
             text-decoration: none;
             transition: all 0.3s;
             text-align: center;
+            flex: 1;
         }
 
         .view-btn:hover {
             background: #142c4c;
+            text-decoration: none;
+        }
+
+        .wishlist-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            background: transparent;
+            color: #dc3545;
+            border: 2px solid #dc3545;
+            border-radius: 8px;
+            padding: 8px 12px;
+            font-size: 1.2rem;
+            text-decoration: none;
+            transition: all 0.3s;
+            min-width: 45px;
+            cursor: pointer;
+        }
+
+        .wishlist-btn:hover {
+            background: #dc3545;
+            color: white;
+            transform: scale(1.05);
+            text-decoration: none;
+        }
+
+        .wishlist-btn.in-wishlist {
+            background: #dc3545;
+            color: white;
+        }
+
+        .wishlist-btn.in-wishlist:hover {
+            background: transparent;
+            color: #dc3545;
         }
 
         /* No Results */
@@ -300,7 +384,7 @@ $result = $conn->query($query);
         /* Responsive */
         @media (max-width: 768px) {
             .container {
-                margin-top: 80px;
+                margin-top: 20px;
                 padding: 0 15px;
             }
 
@@ -321,12 +405,20 @@ $result = $conn->query($query);
             }
 
             .products {
-                grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+                grid-template-columns: 1fr;
                 gap: 20px;
             }
 
             .image-container {
                 height: 200px;
+            }
+
+            .card-actions {
+                flex-direction: column;
+            }
+
+            .wishlist-btn {
+                width: 100%;
             }
         }
     </style>
@@ -393,29 +485,57 @@ $result = $conn->query($query);
     <?php if ($result->num_rows > 0): ?>
         <div class="products" id="productsGrid">
             <?php while($row = $result->fetch_assoc()): 
-                // IMPORTANT: This is the image display code
+                // Handle image path
                 $image_path = 'images/' . $row['image'];
                 if (!empty($row['image']) && file_exists($image_path)) {
                     $image_src = $image_path;
                 } else {
                     $image_src = 'https://via.placeholder.com/400x300?text=' . urlencode($row['name']);
                 }
+
+                // Check if product is in wishlist
+                $in_wishlist = in_array($row['clothes_id'], $user_wishlist);
             ?>
-                <a href="productDetails.php?id=<?php echo $row['clothes_id']; ?>" class="card">
-                    <div class="image-container">
-                        <img src="<?php echo $image_src; ?>" 
-                             alt="<?php echo htmlspecialchars($row['name']); ?>"
-                             onerror="this.src='https://via.placeholder.com/400x300?text=No+Image'">
-                    </div>
-                    <div class="card-content">
-                        <div class="card-title"><?php echo htmlspecialchars($row['name']); ?></div>
-                        <div class="card-description">
-                            <?php echo htmlspecialchars(substr($row['description'], 0, 100)) . (strlen($row['description']) > 100 ? '...' : ''); ?>
+                <div class="card">
+                    <a href="productDetails.php?id=<?php echo $row['clothes_id']; ?>">
+                        <div class="image-container">
+                            <img src="<?php echo $image_src; ?>" 
+                                 alt="<?php echo htmlspecialchars($row['name']); ?>"
+                                 onerror="this.src='https://via.placeholder.com/400x300?text=No+Image'">
                         </div>
-                        <div class="price">R <?php echo number_format($row['price'], 2); ?></div>
-                        <div class="view-btn">View Details →</div>
+                        <div class="card-content">
+                            <div class="card-title"><?php echo htmlspecialchars($row['name']); ?></div>
+                            <div class="card-description">
+                                <?php echo htmlspecialchars(substr($row['description'], 0, 100)) . (strlen($row['description']) > 100 ? '...' : ''); ?>
+                            </div>
+                            <div class="price">R <?php echo number_format($row['price'], 2); ?></div>
+                        </div>
+                    </a>
+                    <div class="card-content" style="padding-top: 0;">
+                        <div class="card-actions">
+                            <a href="productDetails.php?id=<?php echo $row['clothes_id']; ?>" class="view-btn">View Details →</a>
+                            
+                            <!-- ===== WISHLIST BUTTON - STAYS ON SAME PAGE ===== -->
+                            <?php if (isset($_SESSION['user_id'])): ?>
+                                <?php if ($in_wishlist): ?>
+                                    <a href="?wishlist_remove=<?php echo $row['clothes_id']; ?>" 
+                                       class="wishlist-btn in-wishlist" 
+                                       title="Remove from Wishlist">
+                                        ❤️
+                                    </a>
+                                <?php else: ?>
+                                    <a href="?wishlist_add=<?php echo $row['clothes_id']; ?>" 
+                                       class="wishlist-btn" 
+                                       title="Add to Wishlist">
+                                        🤍
+                                    </a>
+                                <?php endif; ?>
+                            <?php else: ?>
+                                <a href="login.php" class="wishlist-btn" title="Login to add to wishlist">🤍</a>
+                            <?php endif; ?>
+                        </div>
                     </div>
-                </a>
+                </div>
             <?php endwhile; ?>
         </div>
     <?php else: ?>

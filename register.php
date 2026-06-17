@@ -1,7 +1,6 @@
 <?php
 include 'includes/DBConn.php';
 
-
 $message = "";
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
@@ -11,6 +10,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $username = $_POST['username'];
     $password = $_POST['password'];
     $confirmPassword = $_POST['confirmPassword'];
+    $role = $_POST['role']; // ADD THIS LINE - Get the selected role
     
     // Check if terms are accepted
     $terms_accepted = isset($_POST['terms']) ? true : false;
@@ -27,8 +27,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     else {
         $hashedPassword = md5($password);
 
-        $query = "INSERT INTO tblUser (name, email, username, password, status)
-                  VALUES ('$name', '$email', '$username', '$hashedPassword', 'pending')";
+        // ADDED 'role' to the INSERT query
+        $query = "INSERT INTO tbluser (name, email, username, password, role, status)
+                  VALUES ('$name', '$email', '$username', '$hashedPassword', '$role', 'pending')";
 
         if ($conn->query($query) === TRUE) {
             $message = "Account created! Wait for admin verification.";
@@ -90,12 +91,17 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             justify-content: center;
         }
 
-        input {
+        input, select {
             width: 100%;
             padding: 12px;
             margin-top: 10px;
             border: 1px solid #ccc;
             border-radius: 5px;
+        }
+
+        select {
+            background: white;
+            cursor: pointer;
         }
 
         /* Checkbox inline with text */
@@ -159,6 +165,13 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             color: green;
             margin-top: 10px;
         }
+
+        /* Role info box */
+        .role-info {
+            font-size: 12px;
+            color: #666;
+            margin-top: 5px;
+        }
     </style>
 </head>
 
@@ -189,6 +202,16 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             <input type="text" name="username" placeholder="Username" required>
             <input type="password" name="password" placeholder="Password (min 8 characters)" required>
             <input type="password" name="confirmPassword" placeholder="Confirm Password" required>
+
+            <!-- ADDED: Role Selection -->
+            <select name="role" required>
+                <option value="">Select Account Type</option>
+                <option value="buyer">Buyer - I want to purchase items</option>
+                <option value="seller">Seller - I want to sell items</option>
+            </select>
+            <div class="role-info">
+                💡 Sellers need admin verification before they can start selling.
+            </div>
 
             <!-- Checkbox before text on same line -->
             <div class="checkbox-group">

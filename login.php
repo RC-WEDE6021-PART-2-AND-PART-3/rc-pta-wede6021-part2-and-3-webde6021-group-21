@@ -1,22 +1,25 @@
 <?php
-include 'includes/DBConn.php';
-
-
 session_start();
+include 'includes/DBConn.php';
 
 $message = "";
 $username = "";
+
+// Check if there's a message from redirect
+if (isset($_GET['message'])) {
+    $message = $_GET['message'];
+}
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
     $username = $_POST['username'];
     $password = md5($_POST['password']);
     
-    // Check if remember me is checked (optional - just stores in session)
+    // Check if remember me is checked
     $remember_me = isset($_POST['remember_me']) ? true : false;
 
     // username OR email
-    $query = "SELECT * FROM tblUser WHERE username='$username' OR email='$username'";
+    $query = "SELECT * FROM tbluser WHERE username='$username' OR email='$username'";
     $result = $conn->query($query);
 
     if ($result->num_rows > 0) {
@@ -35,25 +38,33 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 
                 // Simple remember me using session lifetime
                 if ($remember_me) {
-                    // Extend session lifetime to 30 days
                     ini_set('session.cookie_lifetime', 86400 * 30);
                     ini_set('session.gc_maxlifetime', 86400 * 30);
                     session_regenerate_id(true);
                 }
 
-                header("Location: userDashboard.php");
+                // ===== FIXED: Redirect logic =====
+                // Check if user was trying to access a specific page
+                if (isset($_SESSION['redirect_after_login'])) {
+                    $redirect = $_SESSION['redirect_after_login'];
+                    unset($_SESSION['redirect_after_login']);
+                } else {
+                    // Default redirect for normal login - go to User Dashboard
+                    $redirect = "userDashboard.php";
+                }
+                header("Location: $redirect");
                 exit();
 
             } else {
-                $message = "Account pending verification.";
+                $message = "Account pending verification. Please wait for admin approval.";
             }
 
         } else {
-            $message = "Incorrect password.";
+            $message = "Incorrect password. Please try again.";
         }
 
     } else {
-        $message = "User not found.";
+        $message = "User not found. Please check your username or email.";
     }
 }
 ?>
@@ -106,17 +117,31 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             justify-content: center;
         }
 
+        .right h2 {
+            font-size: 28px;
+            color: #0b1a33;
+            margin-bottom: 25px;
+        }
+
         input {
             width: 100%;
             padding: 12px;
             margin-top: 10px;
             border: 1px solid #ccc;
             border-radius: 5px;
+            font-size: 14px;
+            box-sizing: border-box;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: #0b1a33;
+            box-shadow: 0 0 0 2px rgba(11,26,51,0.1);
         }
 
         button {
             width: 100%;
-            padding: 12px;
+            padding: 14px;
             margin-top: 20px;
             background: #0b1a33;
             color: white;
@@ -124,6 +149,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             border-radius: 5px;
             font-size: 16px;
             cursor: pointer;
+            font-weight: bold;
         }
 
         button:hover {
@@ -163,9 +189,35 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             font-weight: bold;
         }
 
+        .link a:hover {
+            text-decoration: underline;
+        }
+
         .error {
-            color: red;
+            color: #dc3545;
             margin-top: 10px;
+            padding: 10px;
+            background: #f8d7da;
+            border-radius: 5px;
+            border: 1px solid #f5c6cb;
+            font-size: 14px;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                flex-direction: column;
+                height: auto;
+            }
+            .left, .right {
+                width: 100%;
+                padding: 30px;
+            }
+            .left {
+                padding: 40px 30px;
+            }
+            .left h1 {
+                font-size: 28px;
+            }
         }
     </style>
 </head>
@@ -177,13 +229,13 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     <!-- LEFT SIDE -->
     <div class="left">
         <h1>Welcome Back</h1>
-        <p>Sign in to continue shopping vintage branded clothing</p>
+        <p style="font-size: 18px; opacity: 0.9;">Sign in to continue shopping vintage branded clothing</p>
 
-        <ul>
-            <li>Browse curated collections</li>
-            <li>Message sellers directly</li>
-            <li>Track your orders</li>
-            <li>Save your favorite items</li>
+        <ul style="list-style: none; padding: 0; margin-top: 30px;">
+            <li style="margin-bottom: 15px; font-size: 16px;">🛍️ Browse curated collections</li>
+            <li style="margin-bottom: 15px; font-size: 16px;">💬 Message sellers directly</li>
+            <li style="margin-bottom: 15px; font-size: 16px;">📦 Track your orders</li>
+            <li style="margin-bottom: 15px; font-size: 16px;">❤️ Save your favorite items</li>
         </ul>
     </div>
 
@@ -192,10 +244,14 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
         <h2>Sign In</h2>
 
+        <?php if ($message): ?>
+            <div class="error"><?php echo $message; ?></div>
+        <?php endif; ?>
+
         <form method="POST">
             <input type="text" name="username" 
                    placeholder="Enter username or email" 
-                   value="<?php echo $username; ?>" required>
+                   value="<?php echo htmlspecialchars($username); ?>" required>
 
             <input type="password" name="password" placeholder="Enter your password" required>
 
@@ -208,11 +264,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             <button type="submit">Sign In</button>
         </form>
 
-        <div class="error"><?php echo $message; ?></div>
-
         <div class="link">
-            Don't have an account?
-            <a href="register.php">Create Account</a>
+            Don't have an account? <a href="register.php">Create Account</a>
         </div>
 
     </div>
