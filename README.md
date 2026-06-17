@@ -3,7 +3,8 @@
 
 **Pastimes** is a vintage clothing marketplace web application developed as a Portfolio of Evidence (POE) project for The Independent Institute of Education (IIE). 
 
-Demostration video link: https://youtu.be/WWY--VYfZUw?si=dfj34YESDPTN8fpR
+Demostration Website/video link: https://youtu.be/WWY--VYfZUw?si=dfj34YESDPTN8fpR
+Github: https://github.com/RC-WEDE6021-PART-2-AND-PART-3/rc-pta-wede6021-part2-and-3-webde6021-group-21
 
 ### Purpose
 The platform connects buyers with sellers, providing a seamless shopping experience where users can:
